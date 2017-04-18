@@ -1,0 +1,14 @@
+grant {
+	permission java.net.SocketPermission "*:1024-65535", "connect,accept";
+	permission java.net.SocketPermission "*:80", "connect";
+	permission java.util.PropertyPermission "imq.jmsra.fixCR6760301", "read";
+	permission java.util.PropertyPermission "imq.autoStartTxn", "read";
+	permission java.util.PropertyPermission "imq.noBlockUntilTxnCompletes", "read";
+	permission java.util.PropertyPermission "imq.noBlockOnAutoAckNPTopics", "read";
+	permission java.util.PropertyPermission "imqWaitTimeoutForConsumerCloseDone", "read";
+	permission java.util.PropertyPermission "imq.ra.turnOffXATracking", "read";
+	permission java.util.PropertyPermission "imq.resume_on_recover", "read";
+	permission javax.security.auth.PrivateCredentialPermission "javax.resource.spi.security.PasswordCredential * \"*\"", "read";
+	permission java.util.PropertyPermission "imqAbortOnPingAckTimeout", "read";
+	permission java.util.PropertyPermission "imqOverrideJMSPriority", "read";
+};
