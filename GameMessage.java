@@ -30,6 +30,7 @@ public class GameMessage implements Serializable {
 	private long endTime;           // the end time for the winner
 	
 	private boolean inGame;         // whether in game or not when log out
+	private boolean isWaiting;      // whether is waiting stage or not when log out
 	
 	public GameMessage() {
 		identification = null;
@@ -155,6 +156,14 @@ public class GameMessage implements Serializable {
 
 	public void setInGame(boolean inGame) {
 		this.inGame = inGame;
+	}
+
+	public boolean isWaiting() {
+		return isWaiting;
+	}
+
+	public void setWaiting(boolean isWaiting) {
+		this.isWaiting = isWaiting;
 	}
 
 }

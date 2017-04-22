@@ -211,16 +211,27 @@ public class GameServer extends UnicastRemoteObject implements Game {
 					}
 				} else if (msg_id.equals("QUIT_GAME")) {
 					System.out.println("Receive Message - Quit Game: " + gameMessage.getUserName());
-					if (gameMessage.getGamePlayer() != null) {
-						// gamePlayer here is the updated game player (#totalGame ++)
-						update(gameMessage.getUserName(), gameMessage.getGamePlayer());
-					}
-					if (status == 2) { // in gaming status
+					if (gameMessage.isInGame()) {
+						// a game player want to quit
+						System.out.println("Quit in game stage.");
+						if (gameMessage.getGamePlayer() != null) {
+							// gamePlayer here is the updated game player (#totalGame ++)
+							update(gameMessage.getUserName(), gameMessage.getGamePlayer());
+						}
 						if (current_players.size() >= 2) {
 							// game can still continue
 							// send the message to those who are still playing about who quits the game
 							outMessage.setID("QUIT");
-							current_players.remove(gameMessage.getUserName());
+							boolean removed = current_players.remove(gameMessage.getGamePlayer());
+							for (int i = 0; i < current_players.size(); i++) {
+								if (current_players.get(i).getUserName().equals(gameMessage.getUserName())) {
+									current_players.remove(i);
+									removed = true;
+								}
+							}
+							if (removed) {
+								System.out.println("Removed successfully from the current player list: " + gameMessage.getGamePlayer().getUserName());
+							}
 							outMessage.setPlayerList(current_players);
 							for (int i = 0; i < current_players.size(); i++) {
 								outMessage.setTo(current_players.get(i).getUserName());
@@ -230,20 +241,39 @@ public class GameServer extends UnicastRemoteObject implements Game {
 						} else { // size = 1, the last player want to quit the game
 							// game over because all the players quit the game, no one wins
 							status = 0;
-							current_players.remove(gameMessage.getUserName());
+							boolean removed = current_players.remove(gameMessage.getGamePlayer());
+							if (removed) {
+								System.out.println("Removed successfully from the current player list: " + gameMessage.getGamePlayer().getUserName());
+							}
 							noOutMessage = true;
 						}
-					} else if (status == 1){
+					} else if (gameMessage.isWaiting()) {
 						// in waiting stage, still wait for the game to start
 						// get rid of that particular player
-						current_players.remove(gameMessage.getUserName());
+						System.out.println("Quit in waiting stage");
+						boolean removed = current_players.remove(gameMessage.getGamePlayer());
+						for (int i = 0; i < current_players.size(); i++) {
+							if (current_players.get(i).getUserName().equals(gameMessage.getUserName())) {
+								current_players.remove(i);
+								removed = true;
+							}
+						}
+						if (removed) {
+							System.out.println("Removed successfully from the current player list: " + gameMessage.getGamePlayer().getUserName());
+						}
 						if (current_players.size() == 1) 
 							startTime = System.currentTimeMillis(); // recount the starting time again
+						else if (current_players.size() == 0) {
+							status = 0;
+						}
+						outMessage.setID("QUIT");
 						outMessage.setPlayerList(current_players);
-						outMessage.setTo(current_players.get(0).getUserName());
-						sendMessage(outMessage.getTo(), outMessage);
-			        	gameMessage.setID(null);
-					}
+						for (int i = 0; i < current_players.size(); i++) {
+							outMessage.setTo(current_players.get(i).getUserName());
+							sendMessage(outMessage.getTo(), outMessage);
+						}
+			        	outMessage.setID(null);
+					} 
 				} else if (msg_id.equals("SUBMIT")) {
 					System.out.println("Receiving Message - Submit Result: " + gameMessage.getUserName());
 					double result;
@@ -536,7 +566,16 @@ public class GameServer extends UnicastRemoteObject implements Game {
 	// Remove the user from the online user list
 	public void removeUser(String username) throws RemoteException {
 		// remove from the array list
-		onlineUserList.remove(username);
+		boolean isRemoved = onlineUserList.remove(username);
+		for (int i = 0; i < onlineUserList.size(); i++) {
+			if (onlineUserList.get(i).equals(username)) {
+				onlineUserList.remove(i);
+				isRemoved = true;
+			}
+		}
+		if (isRemoved) {
+			System.out.println("Removed successfully from the online user list: " + username);
+		}
 	}
 	
 	// return true if op1 has higher or the same priority than op2

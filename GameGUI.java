@@ -55,7 +55,7 @@ import java.util.Arrays;
  * 
  * @author HAORAN
  * @version 2.0
- * @since 2017.4.2
+ * @since 2017.4.22
  *
  */
 public class GameGUI implements Runnable, MessageListener {
@@ -97,34 +97,34 @@ public class GameGUI implements Runnable, MessageListener {
 	private JMSHelper jmsHelper;
 	private MessageProducer queueSender;
 	private MessageConsumer topicReceiver;
-	private Game gameServer;        // game server
-	private JFrame frame;           // login page
-	private JFrame registerFrame;   // register page
-	private JFrame gameFrame;       // game page
-	private MyPanel panel;          // panel for game window (change in action_listener)
-	private MyTable table;          // the table of leader board
-	private int wordCount = 0;      // for name
-	private int wordCount2 = 0;     // for password
-	private int wordCount3 = 0;     // for register name
-	private int wordCount4 = 0;     // for register password
-	private int wordCount5 = 0;     // for confirm password
-	private JLabel wordCountLabel;  // show # of words in name text field
-	private JLabel wordCountLabel2; // show # of words in password text field
-	private JTextField name;        // name text field in login page
-	private JPasswordField password;// password text field in login page
-	private JTextField rname;         // name text field in register page
-	private JPasswordField rpassword; // password text field in register page
-	private JPasswordField cpassword; // confirm password in register page
-	private JButton newGame;          // "New Game" button in game page
-	private JTextPane gameRule;       // game rule in game page pre-start stage
-	private JScrollPane game_Rule;    // the scroll pane that consist of game rule
-	private JTextField answer;        // the answer text field area
-	private JLabel result;            // the result label will show the value of the expression evaluated by the server
-	private JPanel textField;         // the text field in the game page
-	private int index = -1;                // current page id.  0 for user profile, 1 for game page
-	private int preindex = -1;             // previous page id. 2 for leader board
-	private String _username = "Default";  // store the user_name of the local player
-	private String _password = "********"; // store the password of the local player
+	private Game gameServer;                  // game server
+	private JFrame frame;                     // login page
+	private JFrame registerFrame;             // register page
+	private JFrame gameFrame;                 // game page
+	private MyPanel panel;                    // panel for game window (change in action_listener)
+	private MyTable table;                    // the table of leader board
+	private int wordCount = 0;                // for name
+	private int wordCount2 = 0;               // for password
+	private int wordCount3 = 0;               // for register name
+	private int wordCount4 = 0;               // for register password
+	private int wordCount5 = 0;               // for confirm password
+	private JLabel wordCountLabel;            // show # of words in name text field
+	private JLabel wordCountLabel2;           // show # of words in password text field
+	private JTextField name;                  // name text field in login page
+	private JPasswordField password;          // password text field in login page
+	private JTextField rname;                 // name text field in register page
+	private JPasswordField rpassword;         // password text field in register page
+	private JPasswordField cpassword;         // confirm password in register page
+	private JButton newGame;                  // "New Game" button in game page
+	private JTextPane gameRule;               // game rule in game page pre-start stage
+	private JScrollPane game_Rule;            // the scroll pane that consist of game rule
+	private JTextField answer;                // the answer text field area
+	private JLabel result;                    // the result label will show the value of the expression evaluated by the server
+	private JPanel textField;                 // the text field in the game page
+	private int index = -1;                   // current page id.  0 for user profile, 1 for game page
+	private int preindex = -1;                // previous page id. 2 for leader board
+	private String _username = "Default";     // store the user_name of the local player
+	private String _password = "********";    // store the password of the local player
 	private GamePlayer localPlayer;
 	private ArrayList<GamePlayer> leaderList; // leader list for leader board page, max_num is 10
 	private boolean leaderListUpdated = false;// a flag for marking whether the leader list has been updated
@@ -149,6 +149,7 @@ public class GameGUI implements Runnable, MessageListener {
 			updateCount(_source);
 			return null;
 		}
+		
 		protected void done() {
 			if (source == "name") {
 				wordCountLabel.setText("" + wordCount);
@@ -331,7 +332,9 @@ public class GameGUI implements Runnable, MessageListener {
 					gameFrame.add(game_Rule, BorderLayout.CENTER);
 					gameFrame.add(newGame, BorderLayout.SOUTH);
 				}
+				panel.revalidate();
 				panel.repaint();
+				gameFrame.revalidate();
 				gameFrame.repaint();
 				gameFrame.pack();
 				gameFrame.setVisible(true);
@@ -354,6 +357,8 @@ public class GameGUI implements Runnable, MessageListener {
 					sendMessage(gameMessage);
 					// receive the message from the server by the listener
 				}
+				gameFrame.revalidate();
+				gameFrame.repaint();
 			} else if (source.equals("logout")) {
 				if (JOptionPane.showConfirmDialog(frame, "Are you sure to log out?", "LOGOUT", 
 			            JOptionPane.YES_NO_OPTION,
@@ -361,10 +366,17 @@ public class GameGUI implements Runnable, MessageListener {
 			        	if (inGame) {
 			        		// send the quit message to the server
 				        	GameMessage gameMessage = new GameMessage("QUIT_GAME", null, _username, null);
+				        	gameMessage.setGamePlayer(localPlayer);
+				        	gameMessage.setInGame(false);
 				        	if (gameCards != null) {
+				        		System.out.println("Quit in game stage: " + localPlayer.getUserName());
 				        		localPlayer.setNumberOfGames(localPlayer.getNumOfGames()+1);
 					        	gameMessage.setGamePlayer(localPlayer);
 					        	gameMessage.setInGame(true);
+					        	gameMessage.setWaiting(false);
+				        	} else {
+				        		System.out.println("Quit in waiting stage: " + localPlayer.getUserName());
+				        		gameMessage.setWaiting(true);
 				        	}
 				        	sendMessage(gameMessage);
 				        }
@@ -558,10 +570,21 @@ public class GameGUI implements Runnable, MessageListener {
 		frame.addWindowListener(new java.awt.event.WindowAdapter(){
 			@Override
 		    public void windowClosing(java.awt.event.WindowEvent windowEvent) {
-		        if (JOptionPane.showConfirmDialog(frame, "Are you sure to close?", "Close the window", 
-		            JOptionPane.YES_NO_OPTION,
-		            JOptionPane.QUESTION_MESSAGE) == JOptionPane.YES_OPTION) {
+				int choice = JOptionPane.showConfirmDialog(frame, "Are you sure to close and exit?", "Close the window", 
+			            JOptionPane.YES_NO_OPTION,
+			            JOptionPane.QUESTION_MESSAGE);
+		        if (choice == JOptionPane.YES_OPTION) {
+		        	// close the application
+		        	frame.setVisible(false);
+		        	registerFrame.setVisible(false);
+		        	gameFrame.setVisible(false);
 		        	System.exit(0);
+		        } else if (choice == JOptionPane.NO_OPTION){
+		        	frame.revalidate();
+		        	frame.repaint();
+		        	frame.setVisible(true);
+		        	registerFrame.setVisible(false);
+		        	gameFrame.setVisible(false);
 		        }
 		    }
 		});
@@ -570,10 +593,19 @@ public class GameGUI implements Runnable, MessageListener {
 		registerFrame.addWindowListener(new java.awt.event.WindowAdapter(){
 			@Override
 		    public void windowClosing(java.awt.event.WindowEvent windowEvent) {
-		        if (JOptionPane.showConfirmDialog(frame, "Are you sure to close?", "Close the window", 
-		            JOptionPane.YES_NO_OPTION,
-		            JOptionPane.QUESTION_MESSAGE) == JOptionPane.YES_OPTION) {
+				int choice = JOptionPane.showConfirmDialog(frame, "Are you sure to close and exit?", "Close the window", 
+			            JOptionPane.YES_NO_OPTION,
+			            JOptionPane.QUESTION_MESSAGE);
+		        if (choice == JOptionPane.YES_OPTION) {
+		        	// close the application
+		        	frame.setVisible(false);
+		        	registerFrame.setVisible(false);
+		        	gameFrame.setVisible(false);
 		        	System.exit(0);
+		        } else if (choice == JOptionPane.NO_OPTION){
+		        	frame.setVisible(false);
+		        	registerFrame.setVisible(true);
+		        	gameFrame.setVisible(false);
 		        }
 		    }
 		});
@@ -686,16 +718,24 @@ public class GameGUI implements Runnable, MessageListener {
 		gameFrame.addWindowListener(new java.awt.event.WindowAdapter(){
 			@Override
 		    public void windowClosing(java.awt.event.WindowEvent windowEvent) {
-		        if (JOptionPane.showConfirmDialog(frame, "Are you sure to leave the game?", "Close the window", 
-		            JOptionPane.YES_NO_OPTION,
-		            JOptionPane.QUESTION_MESSAGE) == JOptionPane.YES_OPTION) {
+				int choice = JOptionPane.showConfirmDialog(frame, "Are you sure to leave the game?", "Close the window", 
+			            JOptionPane.YES_NO_OPTION,
+			            JOptionPane.QUESTION_MESSAGE);
+		        if (choice == JOptionPane.YES_OPTION) {
 		        	if (inGame) {
 		        		// send the quit message to the server
 			        	GameMessage gameMessage = new GameMessage("QUIT_GAME", null, _username, null);
+			        	gameMessage.setGamePlayer(localPlayer);
+			        	gameMessage.setInGame(false);
 			        	if (gameCards != null) {
+			        		System.out.println("Quit in game stage: " + localPlayer.getUserName());
 			        		localPlayer.setNumberOfGames(localPlayer.getNumOfGames()+1);
 				        	gameMessage.setGamePlayer(localPlayer);
 				        	gameMessage.setInGame(true);
+				        	gameMessage.setWaiting(false);
+			        	} else {
+			        		System.out.println("Quit in waiting stage: " + localPlayer.getUserName());
+			        		gameMessage.setWaiting(true);
 			        	}
 			        	sendMessage(gameMessage);
 			        } 
@@ -710,6 +750,11 @@ public class GameGUI implements Runnable, MessageListener {
 							System.err.println("Failed invoking RMI: ");
 						}
 					}
+		        } else {
+		        	// "NO" is chosen
+		        	gameFrame.setVisible(true);
+					registerFrame.setVisible(false);
+					frame.setVisible(false);
 		        }
 		    }
 		});
@@ -875,7 +920,9 @@ public class GameGUI implements Runnable, MessageListener {
 					}
 					gameFrame.add(panel);
 					gameFrame.pack();
+					panel.revalidate();
 					panel.repaint();
+					panel.revalidate();
 					gameFrame.repaint();
 					frame.setVisible(false);
 					registerFrame.setVisible(false);
@@ -883,12 +930,14 @@ public class GameGUI implements Runnable, MessageListener {
 				} else if (fromSource == 0) {
 					// from the login page
 					panel = new MyPanel();
+					panel.revalidate();
 					panel.repaint();
 					if (preindex == 2) {
 						gameFrame.remove(table);
 						gameFrame.add(panel);
 					}
 					gameFrame.pack();
+					gameFrame.revalidate();
 					gameFrame.repaint();
 					frame.setVisible(false);
 					registerFrame.setVisible(false);
@@ -906,6 +955,7 @@ public class GameGUI implements Runnable, MessageListener {
 					}
 					gameFrame.pack();
 					gameFrame.setVisible(true);
+					gameFrame.revalidate();
 					gameFrame.repaint();
 				}
 			} else if (gameMessage.getID().equals("LEADER_BOARD")) {
@@ -923,6 +973,7 @@ public class GameGUI implements Runnable, MessageListener {
 				gameFrame.add(table);
 				gameFrame.pack();
 				gameFrame.setVisible(true);
+				gameFrame.revalidate();
 				gameFrame.repaint();
 			} else if (gameMessage.getID().equals("FULL")) {
 				System.out.println("The game is full!");
@@ -940,17 +991,24 @@ public class GameGUI implements Runnable, MessageListener {
 		    	preindex = index;
 		    	index = 1;
 		    	// refresh the page
+		    	panel.revalidate();
 		    	panel.repaint();
+		    	panel.revalidate();
 		    	gameFrame.repaint();
 			} else if (gameMessage.getID().equals("QUIT")) {
 				System.out.println("Receive quit message from other user!");
 				// some player quit the game
 				inGame = true;
 				players = gameMessage.getPlayerList();
+				for (int i = 0; i < players.size(); i++) 
+					System.out.print(players.get(i).getUserName() + " ");
+				System.out.println("");
 				// refresh the page
-		    	panel.repaint();
 		    	gameFrame.remove(panel);
+		    	panel.revalidate();
+		    	panel.repaint();
 		    	gameFrame.add(panel, BorderLayout.CENTER);
+		    	gameFrame.revalidate();
 		    	gameFrame.repaint();
 			} else if (gameMessage.getID().equals("START")) {
 				System.out.println("Game starts!");
@@ -971,9 +1029,9 @@ public class GameGUI implements Runnable, MessageListener {
 				players = gameMessage.getPlayerList();
 				startTime = System.currentTimeMillis();
 				// refresh the page
+				panel.revalidate();
 		    	panel.repaint();
-		    	gameFrame.repaint();
-		    	panel.repaint();
+		    	gameFrame.revalidate();
 		    	gameFrame.repaint();
 			} else if (gameMessage.getID().equals("RESULT")) {
 				System.out.println("Answer is wrong!");
@@ -982,7 +1040,9 @@ public class GameGUI implements Runnable, MessageListener {
 				expressionValue = gameMessage.getResult();
 				JOptionPane.showMessageDialog(null, "Answer not correct! " + (expressionValue == -1 ? "Invalid Expression" : "The value of your expression is: "+expressionValue), "Wrong Answer", JOptionPane.INFORMATION_MESSAGE);
 				// refresh the page
+				panel.revalidate();
 		    	panel.repaint();
+		    	gameFrame.revalidate();
 		    	gameFrame.repaint();
 			} else if (gameMessage.getID().equals("OVER")) {
 				System.out.println("Game over!");
@@ -1028,7 +1088,9 @@ public class GameGUI implements Runnable, MessageListener {
 					index = 3;
 					cards = null;
 					players = null;
+					panel.revalidate();
 					panel.repaint();
+					gameFrame.revalidate();
 					gameFrame.repaint();
 				}
 			} else {
